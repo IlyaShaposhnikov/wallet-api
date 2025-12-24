@@ -29,13 +29,13 @@ async def lifespan(app: FastAPI):
     При запуске создает таблицы в БД.
     """
     print("Starting up...")
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        print("Database tables created/verified")
-    except Exception as e:
-        print(f"Note: Could not connect to database: {e}")
-        print("This is expected during development without Docker")
+    # try:
+    #     async with engine.begin() as conn:
+    #         await conn.run_sync(Base.metadata.create_all)
+    #     print("Database tables created/verified")
+    # except Exception as e:
+    #     print(f"Note: Could not connect to database: {e}")
+    #     print("This is expected during development without Docker")
     yield
     print("Shutting down...")
     await engine.dispose()

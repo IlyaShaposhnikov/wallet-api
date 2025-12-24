@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "wallet_user"
     POSTGRES_PASSWORD: str = "wallet_password"
     POSTGRES_DB: str = "wallet_db"
-    POSTGRES_HOST: str = "localhost"  # Позже поменять на 'db' для Docker
+    POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
 
     @property
