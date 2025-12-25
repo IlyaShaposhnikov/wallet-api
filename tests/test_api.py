@@ -1,11 +1,7 @@
-# tests/test_api.py
-import pytest
 import asyncio
-from decimal import Decimal
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.wallet_repository import WalletRepository
+import pytest
+from httpx import AsyncClient
 
 
 class TestWalletAPI:
@@ -36,7 +32,7 @@ class TestWalletAPI:
         # Пополняем несуществующий кошелек
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 1000.50}
+            json={"operation_type": "DEPOSIT", "amount": 1000.50},
         )
 
         assert response.status_code == 200
@@ -59,7 +55,7 @@ class TestWalletAPI:
         # Пополняем
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 2000.00}
+            json={"operation_type": "DEPOSIT", "amount": 2000.00},
         )
         assert response.status_code == 200
         assert response.json()["new_balance"] == 2000.00
@@ -67,7 +63,7 @@ class TestWalletAPI:
         # Списываем
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "WITHDRAW", "amount": 500.00}
+            json={"operation_type": "WITHDRAW", "amount": 500.00},
         )
         assert response.status_code == 200
         assert response.json()["new_balance"] == 1500.00
@@ -84,13 +80,13 @@ class TestWalletAPI:
         # Сначала пополняем
         await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 300.00}
+            json={"operation_type": "DEPOSIT", "amount": 300.00},
         )
 
         # Пытаемся списать больше, чем есть
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "WITHDRAW", "amount": 500.00}
+            json={"operation_type": "WITHDRAW", "amount": 500.00},
         )
 
         assert response.status_code == 400
@@ -102,7 +98,7 @@ class TestWalletAPI:
 
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "WITHDRAW", "amount": 100.00}
+            json={"operation_type": "WITHDRAW", "amount": 100.00},
         )
 
         assert response.status_code == 404
@@ -114,7 +110,7 @@ class TestWalletAPI:
 
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "INVALID", "amount": 100.00}
+            json={"operation_type": "INVALID", "amount": 100.00},
         )
 
         # FastAPI автоматически валидирует enum, поэтому 422
@@ -126,7 +122,7 @@ class TestWalletAPI:
 
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": -100.00}
+            json={"operation_type": "DEPOSIT", "amount": -100.00},
         )
 
         assert response.status_code == 422  # Валидация Pydantic
@@ -137,7 +133,7 @@ class TestWalletAPI:
 
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 0.00}
+            json={"operation_type": "DEPOSIT", "amount": 0.00},
         )
 
         assert response.status_code == 422  # Валидация Pydantic
@@ -156,7 +152,7 @@ class TestWalletAPI:
         # Создаем кошелек с начальным балансом
         response = await first_client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 1000.00}
+            json={"operation_type": "DEPOSIT", "amount": 1000.00},
         )
         assert response.status_code == 200
 
@@ -165,7 +161,7 @@ class TestWalletAPI:
             client = multiple_clients[client_idx]
             response = await client.post(
                 f"/api/v1/wallets/{wallet_id}/operation",
-                json={"operation_type": "DEPOSIT", "amount": amount}
+                json={"operation_type": "DEPOSIT", "amount": amount},
             )
             return response
 
@@ -198,7 +194,7 @@ class TestWalletAPI:
         # Создаем кошелек с большим балансом
         response = await first_client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 1000.00}
+            json={"operation_type": "DEPOSIT", "amount": 1000.00},
         )
         assert response.status_code == 200
 
@@ -207,7 +203,7 @@ class TestWalletAPI:
             client = multiple_clients[client_idx]
             response = await client.post(
                 f"/api/v1/wallets/{wallet_id}/operation",
-                json={"operation_type": "WITHDRAW", "amount": amount}
+                json={"operation_type": "WITHDRAW", "amount": amount},
             )
             return response
 
@@ -239,7 +235,7 @@ class TestWalletAPI:
         # Создаем кошелек с начальным балансом
         response = await first_client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 500.00}
+            json={"operation_type": "DEPOSIT", "amount": 500.00},
         )
         assert response.status_code == 200
 
@@ -257,13 +253,13 @@ class TestWalletAPI:
             client = multiple_clients[client_idx]
             response = await client.post(
                 f"/api/v1/wallets/{wallet_id}/operation",
-                json={"operation_type": op_type, "amount": amount}
+                json={"operation_type": op_type, "amount": amount},
             )
             return response
 
         # Запускаем все операции одновременно
         tasks = [
-            perform_operation(i+1, op_type, amount)
+            perform_operation(i + 1, op_type, amount)
             for i, (op_type, amount) in enumerate(operations)
         ]
         responses = await asyncio.gather(*tasks, return_exceptions=True)
@@ -286,7 +282,7 @@ class TestWalletAPI:
         # Пытаемся использовать сумму с 3 знаками после запятой
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 100.123}
+            json={"operation_type": "DEPOSIT", "amount": 100.123},
         )
 
         # Должна быть ошибка валидации
@@ -298,7 +294,7 @@ class TestWalletAPI:
 
         response = await client.post(
             f"/api/v1/wallets/{wallet_id}/operation",
-            json={"operation_type": "DEPOSIT", "amount": 100.12}
+            json={"operation_type": "DEPOSIT", "amount": 100.12},
         )
 
         assert response.status_code == 200

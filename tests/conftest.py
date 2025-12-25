@@ -3,33 +3,30 @@ import os
 from typing import AsyncGenerator, Generator
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
-    AsyncSession, create_async_engine, async_sessionmaker
+    AsyncSession, async_sessionmaker, create_async_engine
 )
 from sqlalchemy.pool import NullPool
 
+from app.database import Base, get_db
 from app.main import app
-from app.database import get_db, Base
 
 # Используем тестовую БД с NullPool для избежания проблем с конкурентностью
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://wallet_user:wallet_password@test_db:5432/wallet_test_db"
+    "postgresql+asyncpg://wallet_user:wallet_password@test_db:5432/wallet_test_db",
 )
 
 # Создаем движок с NullPool для тестов
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
-    poolclass=NullPool  # Отключаем пул соединений для тестов
+    poolclass=NullPool,  # Отключаем пул соединений для тестов
 )
 
 TestAsyncSessionLocal = async_sessionmaker(
-    test_engine,
-    expire_on_commit=False,
-    class_=AsyncSession,
-    autoflush=False
+    test_engine, expire_on_commit=False, class_=AsyncSession, autoflush=False
 )
 
 
@@ -40,6 +37,7 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
+
 
 # Переопределяем зависимость get_db в приложении для тестов
 app.dependency_overrides[get_db] = override_get_db
@@ -94,15 +92,14 @@ async def client(
     def override_get_db_for_test():
         async def _override_get_db():
             yield db_session
+
         return _override_get_db
 
     # Временно переопределяем get_db для этого конкретного клиента
     app.dependency_overrides[get_db] = override_get_db_for_test()
 
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-        timeout=30.0
+        transport=ASGITransport(app=app), base_url="http://test", timeout=30.0
     ) as ac:
         yield ac
 
@@ -121,13 +118,13 @@ async def multiple_clients():
         def override_get_db_for_client():
             async def _override_get_db():
                 yield session
+
             return _override_get_db
 
         app.dependency_overrides[get_db] = override_get_db_for_client()
 
         client = AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test",
+            transport=ASGITransport(app=app), base_url="http://test",
             timeout=30.0
         )
         clients.append((client, session))

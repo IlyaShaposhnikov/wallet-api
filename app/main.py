@@ -1,18 +1,16 @@
-# app/main.py
 from contextlib import asynccontextmanager
-from decimal import Decimal
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 
-from app.database import engine, get_db
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
+from app.database import engine, get_db
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas import (
+    OperationResponse,
     WalletOperationRequest,
     WalletResponse,
-    OperationResponse,
-    OperationType
 )
 
 
@@ -32,7 +30,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API для управления балансом кошельков",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -52,7 +50,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     "/api/v1/wallets/{wallet_id}",
     response_model=WalletResponse,
     summary="Получить баланс кошелька",
-    description="Возвращает текущий баланс указанного кошелька."
+    description="Возвращает текущий баланс указанного кошелька.",
 )
 async def get_balance(wallet_id: str, db: AsyncSession = Depends(get_db)):
     """Получение баланса кошелька."""
@@ -61,14 +59,10 @@ async def get_balance(wallet_id: str, db: AsyncSession = Depends(get_db)):
 
     if not wallet:
         raise HTTPException(
-            status_code=404,
-            detail=f"Wallet with id {wallet_id} not found"
+            status_code=404, detail=f"Wallet with id {wallet_id} not found"
         )
 
-    return WalletResponse(
-        wallet_id=wallet.id,
-        balance=float(wallet.balance)
-    )
+    return WalletResponse(wallet_id=wallet.id, balance=float(wallet.balance))
 
 
 @app.post(
@@ -83,12 +77,12 @@ async def get_balance(wallet_id: str, db: AsyncSession = Depends(get_db)):
     - Для DEPOSIT: если кошелек не существует, он будет создан
     - Операции атомарны и защищены от параллельного доступа
     (одновременных изменений, конкуренции за ресурсы)
-    """
+    """,
 )
 async def perform_operation(
     wallet_id: str,
     operation: WalletOperationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Изменение баланса кошелька."""
     try:
@@ -97,27 +91,25 @@ async def perform_operation(
         wallet = await repo.update_balance(
             wallet_id=wallet_id,
             operation_type=operation.operation_type.value,
-            amount=operation.amount
+            amount=operation.amount,
         )
 
         return OperationResponse(
             wallet_id=wallet.id,
             operation_type=operation.operation_type,
             amount=float(operation.amount),
-            new_balance=float(wallet.balance)
+            new_balance=float(wallet.balance),
         )
 
     except ValueError as e:
         error_msg = str(e)
         if "Insufficient funds" in error_msg:
             raise HTTPException(
-                status_code=400,
-                detail="Insufficient funds for withdrawal"
+                status_code=400, detail="Insufficient funds for withdrawal"
             )
         elif "Wallet not found" in error_msg:
             raise HTTPException(
-                status_code=404,
-                detail=f"Wallet with id {wallet_id} not found"
+                status_code=404, detail=f"Wallet with id {wallet_id} not found"
             )
         else:
             raise HTTPException(status_code=400, detail=error_msg)

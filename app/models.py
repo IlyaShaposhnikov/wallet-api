@@ -1,5 +1,7 @@
 import uuid
+
 from sqlalchemy import Column, Numeric, String
+
 from app.database import Base
 
 
@@ -8,6 +10,7 @@ class Wallet(Base):
     Модель, представляющая таблицу 'wallets' в базе данных.
     Каждый кошелек имеет уникальный идентификатор и баланс.
     """
+
     __tablename__ = "wallets"
 
     id = Column(

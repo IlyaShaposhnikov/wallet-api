@@ -45,7 +45,7 @@ services:
       POSTGRES_PASSWORD: wallet_password
       POSTGRES_DB: wallet_db
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       - .:/app
     command: >

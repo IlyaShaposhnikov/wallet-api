@@ -1,22 +1,24 @@
-# app/schemas.py
 from decimal import Decimal
-from pydantic import BaseModel, Field, validator
 from enum import Enum
-from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class OperationType(str, Enum):
     """Типы операций с кошельком."""
+
     DEPOSIT = "DEPOSIT"
     WITHDRAW = "WITHDRAW"
 
 
 class WalletOperationRequest(BaseModel):
     """Схема для запроса на изменение баланса."""
+
     operation_type: OperationType
     amount: float = Field(gt=0, description="Сумма должна быть положительной")
 
-    @validator('amount')
+    @field_validator("amount")
+    @classmethod
     def validate_amount(cls, v):
         """Валидация суммы: проверка на 2 знака после запятой."""
         if v <= 0:
@@ -31,15 +33,16 @@ class WalletOperationRequest(BaseModel):
 
 class WalletResponse(BaseModel):
     """Схема для ответа с информацией о кошельке."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     wallet_id: str
     balance: float
-
-    class Config:
-        from_attributes = True
 
 
 class OperationResponse(BaseModel):
     """Схема для ответа об операции."""
+
     wallet_id: str
     operation_type: OperationType
     amount: float

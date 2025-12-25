@@ -1,8 +1,9 @@
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Wallet
 
@@ -14,7 +15,7 @@ class WalletRepository:
         self.db = db
 
     async def get_wallet(
-            self, wallet_id: str, for_update: bool = False
+        self, wallet_id: str, for_update: bool = False
     ) -> Optional[Wallet]:
         """
         Получить кошелек по ID.
@@ -39,17 +40,14 @@ class WalletRepository:
         :param wallet_id: UUID кошелька
         :return: Созданный объект Wallet
         """
-        wallet = Wallet(id=wallet_id, balance=Decimal('0.00'))
+        wallet = Wallet(id=wallet_id, balance=Decimal("0.00"))
         self.db.add(wallet)
         await self.db.commit()
         await self.db.refresh(wallet)
         return wallet
 
     async def update_balance(
-        self,
-        wallet_id: str,
-        operation_type: str,
-        amount: Decimal
+        self, wallet_id: str, operation_type: str, amount: Decimal
     ) -> Optional[Wallet]:
         """
         Изменить баланс кошелька с проверкой на достаточность средств.
