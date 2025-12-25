@@ -16,6 +16,22 @@ services:
       timeout: 5s
       retries: 5
 
+  test_db:
+    image: postgres:15
+    container_name: wallet_test_db
+    environment:
+      POSTGRES_USER: wallet_user
+      POSTGRES_PASSWORD: wallet_password
+      POSTGRES_DB: wallet_test_db
+    # Внутри Docker-сети порт 5432, наружу не публикуем
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wallet_user -d wallet_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
   app:
     build: .
     container_name: wallet_app
@@ -36,6 +52,31 @@ services:
       sh -c "
         alembic upgrade head &&
         uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  tests:
+    build: .
+    container_name: wallet_tests
+    depends_on:
+      test_db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: test_db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: wallet_user
+      POSTGRES_PASSWORD: wallet_password
+      POSTGRES_DB: wallet_test_db
+      TEST_DATABASE_URL: postgresql+asyncpg://wallet_user:wallet_password@test_db:5432/wallet_test_db
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+        echo 'Ожидание тестовой базы данных...' &&
+        sleep 10 &&
+        echo 'Проверка подключения к БД...' &&
+        python check_db.py &&
+        echo 'Запуск тестов...' &&
+        python -m pytest tests/ -v --asyncio-mode=auto --tb=short
       "
 
 volumes:
