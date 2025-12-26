@@ -22,7 +22,7 @@ docker-compose up --build
 ### 3. Документация API
 После запуска откройте: http://localhost:8080/docs (http://0.0.0.0:8080/docs)
 
-### Основные функции API
+## Основные функции API
 Получение баланса
 ```text
 GET /api/v1/wallets/{wallet_id}
@@ -40,13 +40,13 @@ POST /api/v1/wallets/{wallet_id}/operation
 }
 ```
 
-### Тестирование
+## Тестирование
 Запуск тестов
 ```bash
 docker-compose up tests
 ```
 
-### Технологии
+## Технологии
 - FastAPI - асинхронный веб-фреймворк
 - SQLAlchemy 2.0 + asyncpg - асинхронная работа с PostgreSQL
 - Alembic - миграции базы данных
@@ -54,13 +54,13 @@ docker-compose up tests
 - Pytest + httpx - тестирование
 - Pydantic v2 - валидация данных
 
-### Конкурентность
+## Конкурентность
 Приложение гарантирует корректную работу при параллельных запросах благодаря:
 - Транзакциям уровня REPEATABLE READ
 - Блокировкам SELECT FOR UPDATE
 - Атомарным операциям изменения баланса
 
-### Структура проекта
+## Структура проекта
 ```text
 wallet-api/
 ├── app/
@@ -77,6 +77,6 @@ wallet-api/
 └── Dockerfile            # Docker образ
 ```
 
-### Автор
+## Автор
 Шапошников Илья
 ilia.a.shaposhnikov@gmail.com
