@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, List
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -22,25 +22,12 @@ TEST_DATABASE_URL = os.getenv(
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
-    poolclass=NullPool,  # Отключаем пул соединений для тестов
+    poolclass=NullPool,
 )
 
 TestAsyncSessionLocal = async_sessionmaker(
     test_engine, expire_on_commit=False, class_=AsyncSession, autoflush=False
 )
-
-
-async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Фикстура для получения сессии тестовой БД."""
-    async with TestAsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-
-# Переопределяем зависимость get_db в приложении для тестов
-app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(scope="session")
@@ -55,25 +42,17 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest.fixture(scope="function", autouse=True)
 async def setup_database():
     """Создание и удаление таблиц перед и после каждого теста."""
-    try:
-        async with test_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        print("Тестовые таблицы созданы")
-    except Exception as e:
-        print(f"Ошибка при создании таблиц: {e}")
-        raise
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("Тестовые таблицы созданы")
 
     yield
 
-    try:
-        async with test_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-        print("Тестовые таблицы удалены")
-    except Exception as e:
-        print(f"Ошибка при удалении таблиц: {e}")
-    finally:
-        # Закрываем все соединения
-        await test_engine.dispose()
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    print("Тестовые таблицы удалены")
+
+    await test_engine.dispose()
 
 
 @pytest.fixture
@@ -88,52 +67,69 @@ async def client(
     db_session: AsyncSession
 ) -> AsyncGenerator[AsyncClient, None]:
     """Фикстура для создания асинхронного клиента тестирования."""
-
-    def override_get_db_for_test():
+    def override_get_db():
         async def _override_get_db():
             yield db_session
-
         return _override_get_db
 
-    # Временно переопределяем get_db для этого конкретного клиента
-    app.dependency_overrides[get_db] = override_get_db_for_test()
+    app.dependency_overrides[get_db] = override_get_db()
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", timeout=30.0
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        timeout=30.0
     ) as ac:
         yield ac
 
-    # Восстанавливаем оригинальную зависимость
-    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
-async def multiple_clients():
-    """Фикстура для создания нескольких клиентов для конкурентных тестов."""
+async def multiple_clients() -> List[AsyncClient]:
+    """
+    Создание нескольких независимых клиентов для конкурентных тестов.
+    Каждый клиент имеет свою собственную сессию БД.
+    """
     clients = []
-    for _ in range(5):
-        # Создаем отдельную сессию для каждого клиента
+    sessions = []
+
+    for i in range(5):
+        # Создаем новую сессию для каждого клиента
         session = TestAsyncSessionLocal()
+        sessions.append(session)
 
-        def override_get_db_for_client():
-            async def _override_get_db():
+        # Создаем новое приложение для каждого клиента, чтобы избежать
+        # конфликтов зависимостей
+        from fastapi import FastAPI
+        from app.main import app as original_app
+
+        # Создаем новое приложение для каждого клиента
+        client_app = FastAPI()
+
+        # Копируем маршруты из оригинального приложения
+        client_app.include_router(original_app.router)
+
+        # Создаем уникальную зависимость для этого клиента
+        def create_get_db(session=session):
+            async def get_db_override():
                 yield session
+            return get_db_override
 
-            return _override_get_db
+        # Переопределяем зависимость для этого конкретного приложения
+        client_app.dependency_overrides[get_db] = create_get_db()
 
-        app.dependency_overrides[get_db] = override_get_db_for_client()
-
+        # Создаем клиента для этого приложения
         client = AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test",
+            transport=ASGITransport(app=client_app),
+            base_url="http://test",
             timeout=30.0
         )
-        clients.append((client, session))
+        clients.append(client)
 
-    yield [c[0] for c in clients]  # Возвращаем только клиентов
+    yield clients
 
-    for client, session in clients:
+    # Закрываем всех клиентов и сессии
+    for client in clients:
         await client.aclose()
+    for session in sessions:
         await session.close()
-
-    # Восстанавливаем оригинальную зависимость
-    app.dependency_overrides[get_db] = override_get_db

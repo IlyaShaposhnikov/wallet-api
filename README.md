@@ -43,11 +43,7 @@ POST /api/v1/wallets/{wallet_id}/operation
 ### Тестирование
 Запуск тестов
 ```bash
-# Все тесты
 docker-compose up tests
-
-# Или локально
-python -m pytest tests/ -v
 ```
 
 ### Технологии
