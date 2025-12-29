@@ -8,19 +8,24 @@
 ```bash
 git clone git@github.com:IlyaShaposhnikov/wallet-api.git
 cd wallet-api
+# (Для локальной разработки вне Docker, если нужно)
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Запуск в Docker
+### 2. Настройка переменных окружения
+Создайте файл `.env` в корне проекта, основываясь на примере `.env.example`. Это позволит вам настроить параметры подключения к базе данных.
+Если файл `.env` отсутствует, будут использованы значения по умолчанию, определённые в `app/config.py`.
+
+### 3. Запуск в Docker
 ```bash
 docker-compose up --build
 ```
-Приложение будет доступно по адресу: http://localhost:8080 (http://0.0.0.0:8080)
+Приложение будет доступно по адресу: http://localhost:8080 (http://127.0.0.1:8080)
 
-### 3. Документация API
-После запуска откройте: http://localhost:8080/docs (http://0.0.0.0:8080/docs)
+### 4. Документация API
+После запуска откройте: http://localhost:8080/docs (http://127.0.0.1:8080/docs)
 
 ## Основные функции API
 Получение баланса

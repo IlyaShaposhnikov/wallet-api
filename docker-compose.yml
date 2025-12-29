@@ -2,16 +2,18 @@ services:
   db:
     image: postgres:15
     container_name: wallet_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: wallet_user
-      POSTGRES_PASSWORD: wallet_password
-      POSTGRES_DB: wallet_db
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wallet_user -d wallet_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,13 +21,15 @@ services:
   test_db:
     image: postgres:15
     container_name: wallet_test_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: wallet_user
-      POSTGRES_PASSWORD: wallet_password
-      POSTGRES_DB: wallet_test_db
+      - POSTGRES_USER=${TEST_DB_USER}
+      - POSTGRES_PASSWORD=${TEST_DB_PASSWORD}
+      - POSTGRES_DB=${TEST_DB_NAME}
     # Внутри Docker-сети порт 5432, наружу не публикуем
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wallet_user -d wallet_test_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_DB_USER} -d ${TEST_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -38,12 +42,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: wallet_user
-      POSTGRES_PASSWORD: wallet_password
-      POSTGRES_DB: wallet_db
+    env_file:
+      - .env
     ports:
       - "8080:8000"
     volumes:
@@ -60,13 +60,10 @@ services:
     depends_on:
       test_db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
-      POSTGRES_HOST: test_db
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: wallet_user
-      POSTGRES_PASSWORD: wallet_password
-      POSTGRES_DB: wallet_test_db
-      TEST_DATABASE_URL: postgresql+asyncpg://wallet_user:wallet_password@test_db:5432/wallet_test_db
+            - TEST_DATABASE_URL=postgresql+asyncpg://${TEST_DB_USER}:${TEST_DB_PASSWORD}@${TEST_DB_HOST}:${TEST_DB_PORT}/${TEST_DB_NAME}
     volumes:
       - .:/app
     command: >

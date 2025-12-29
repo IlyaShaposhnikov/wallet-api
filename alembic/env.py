@@ -6,7 +6,6 @@ from alembic import context
 
 from app.config import settings
 from app.models import Base
-from app.database import engine
 
 config = context.config
 if config.config_file_name is not None:

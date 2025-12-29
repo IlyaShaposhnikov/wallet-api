@@ -13,10 +13,12 @@ from app.database import Base, get_db
 from app.main import app
 
 # Используем тестовую БД с NullPool для избежания проблем с конкурентностью
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://wallet_user:wallet_password@test_db:5432/wallet_test_db",
-)
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+if not TEST_DATABASE_URL:
+    raise ValueError(
+        "TEST_DATABASE_URL environment variable not set, "
+        "please check your .env or docker-compose.yml"
+    )
 
 # Создаем движок с NullPool для тестов
 test_engine = create_async_engine(
